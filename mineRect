@@ -2,9 +2,9 @@
 local tArgs = { ... }
 
 -- '#' gets the length of the given list
-if #tArgs < 1 or #tArgs < 3 or #tArgs > 3 then
+if #tArgs < 1 or #tArgs < 4 or #tArgs > 4 then
 
-	print( "Input Error. Usage: mineRect <length (x)> <height (y)> <width (z)>" )
+	print( "Input Error. Usage: mineRect <length (x)> <height (y)> <width (z)> <offset (starting spot)>" )
 
 	-- ends the program
 	return
@@ -16,7 +16,9 @@ end
 local cord_l, cord_h, cord_w = 0, 0, 0
 
 -- 12o'clock, 3o'clock, 6o'clock, 9o'clock
--- local direction = "12o'clock"
+local directions = {"12o'clock", "3o'clock", "6o'clock", "9o'clock"}
+local direction_selector = 1
+local current_direction = directions[direction_selector]
 
 
 
@@ -52,12 +54,164 @@ end
 
 
 
--- syntax: num; 'cord_l', 'h', or 'w'; '+' or '-'; 'mine' or 'don't_mine'
-function MoveForward(tilesForward, cordChanged, plusOrMinus, should_mine)
+function InventoryFull()
+
+	local slotCount = 0
+
+	for inventory = 1, 9 do
+
+		if turtle.getItemCount(inventory) > 0 then
+
+			slotCount = slotCount + 1
+
+		end
+
+	end
+
+	if slotCount > 8 then
+		
+		print("Inventory Full")
+		return true
+
+	else
+
+		return false
+
+	end
+
+end
+
+
+
+-- syntax: 'L' or 'R'
+function ChangeDirection(leftOrRight)
+
+	if leftOrRight == 'R' then
+
+		turtle.turnRight()
+		
+		direction_selector = direction_selector + 1
+
+		if direction_selector % 5 == 0 then
+			
+			direction_selector = 1
+
+		end
+
+	elseif leftOrRight == 'L' then
+
+		turtle.turnLeft()
+		
+		direction_selector = direction_selector - 1
+
+		if direction_selector < 1 then
+			
+			direction_selector = 4
+
+		end
+
+	else
+
+		error("Syntax error: use string 'L' or 'R'")
+
+	end
+
+	current_direction = directions[direction_selector]
+
+	print(current_direction)
+
+end
+
+
+
+-- syntax: "12o'clock", "3o'clock", "6o'clock", or "9o'clock"
+function SetDirection(direction)
+
+	while current_direction ~= direction do
+	
+		ChangeDirection('R')
+
+	end
+
+	print("direction adjusted.")
+	
+end
+
+
+
+function EmptyInventory()
+
+	local stored_l, stored_h, stored_w = cord_l, cord_h, cord_w
+	local stored_direction = current_direction
+
+	MoveDown(stored_h)
+
+	SetDirection("3o'clock")
+
+	MoveForward(stored_w, 'cord_w', '-', "don't_mine", "don't_check_inv")
+
+	ChangeDirection('R')
+
+	MoveForward(stored_l, 'cord_l', '-', "don't_mine", "don't_check_inv")
+
+	print("Emptying inventory")
+	print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+
+	--Empty inventory
+	for inventory = 1, 9 do
+
+		turtle.select(inventory)
+		turtle.drop()
+
+	end
+
+	ChangeDirection('R')
+	ChangeDirection('R')
+
+	-- Return to previous position
+	print("Returning...")
+
+	MoveUp(stored_h)
+
+	MoveForward(stored_l, 'cord_l', '+', "don't_mine", "don't_check_inv")
+
+	ChangeDirection('L')
+
+	MoveForward(stored_w, 'cord_w', '+', "don't_mine", "don't_check_inv")
+
+	SetDirection(stored_direction)
+
+	-- print("current direction: " .. current_direction)
+	-- error("I said stop!!")
+
+	print("Continuing layer...")
+
+end
+
+
+
+-- syntax: num; 'cord_l', 'h', or 'w'; '+' or '-'; 'mine' or 'don't_mine'; "don't_check_inv" or "check_inv"
+function MoveForward(tilesForward, cordChanged, plusOrMinus, should_mine, shouldCheckInventory)
 
 	for i = 1, tilesForward do
 
-		local moveSuccess
+		if shouldCheckInventory == "check_inv" then
+
+			if InventoryFull() then
+			
+				EmptyInventory()
+		
+			end
+
+		elseif shouldCheckInventory == "don't_check_inv" then
+			
+			-- pass
+
+		else
+
+			error("Syntax error. Use string 'check_inv' or 'don't_check_inv'")
+
+		end
 
 		if should_mine == "mine" then
 
@@ -75,7 +229,7 @@ function MoveForward(tilesForward, cordChanged, plusOrMinus, should_mine)
 			turtle.dig()
 
 		end
-
+		
 		if plusOrMinus == '+' then
 
 			if cordChanged == "cord_l" then
@@ -103,7 +257,7 @@ function MoveForward(tilesForward, cordChanged, plusOrMinus, should_mine)
 				cord_l = cord_l - 1
 
 			elseif cordChanged == "cord_h" then
-
+	
 				cord_h = cord_h - 1
 
 			elseif cordChanged == "cord_w" then
@@ -130,10 +284,10 @@ end
 
 function RotateRight()
 
-	turtle.turnRight()
+	ChangeDirection('R')
 	turtle.dig()
 	turtle.forward()
-	turtle.turnRight()
+	ChangeDirection('R')
 	turtle.dig()
 
 	cord_w = cord_w + 1
@@ -144,10 +298,10 @@ end
 
 function RotateLeft()
 
-	turtle.turnLeft()
+	ChangeDirection('L')
 	turtle.dig()
 	turtle.forward()
-	turtle.turnLeft()
+	ChangeDirection('L')
 	turtle.dig()
 
 	cord_w = cord_w + 1
@@ -156,27 +310,23 @@ end
 
 
 
-function EmptyInventory()
-
-	for inventory = 1, 9 do
-
-		turtle.select(inventory)
-		turtle.drop()
-
-	end
-
-end
-
-
-
-function MineRect(Length, Height, Width)
+function MineRect(Length, Height, Width, Offset)
 
 	for y = 1, Height do
+
+		MoveUp(Offset)
+
+		if Height > 1 and y < Height then
+
+			MoveUp(y-1)
+
+		end
 
 		if Height > 1 and Width == 1 and Length == 1 then
 
 			turtle.digUp()
-			turtle.turnRight()
+			cord_h = cord_h + 1
+			ChangeDirection('R')
 
 		else
 
@@ -188,7 +338,7 @@ function MineRect(Length, Height, Width)
 					print("Mine: Even x = ".. x .."")
 					print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
 
-					MoveForward(Length-1, 'cord_l', '-', "mine")
+					MoveForward(Length-1, 'cord_l', '-', "mine", "check_inv")
 
 					if x ~= Width then
 
@@ -198,64 +348,18 @@ function MineRect(Length, Height, Width)
 
 						print("Finished mining layer.")
 
-						turtle.turnLeft()
+						ChangeDirection('L')
 
-						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
-
-					end
-
-					-- Inventory full?
-					local slotCount = 0
-
-					for inventory = 1, 9 do
-
-						if turtle.getItemCount(inventory) > 0 then
-
-							slotCount = slotCount + 1
-
-						end
+						MoveForward(cord_w, 'cord_w', '-', "don't_mine", "check_inv")
 
 					end
 
-					if slotCount > 8 then
-
-						print("Inventory Full")
-
-						local stored_h, stored_w = cord_h, cord_w
-
-						turtle.turnRight()
-						MoveDown(stored_h)
-
-						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
-
-						turtle.turnRight()
-
-						print("Emptying inventory")
-						print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
-						EmptyInventory()
-
-						turtle.turnRight()
-
-						-- Return to previous position
-						print("Returning...")
-
-						MoveUp(stored_h)
-
-						MoveForward(stored_w, 'cord_w', '+', "don't_mine")
-
-						turtle.turnRight()
-
-						print("Continuing layer...")
-			
-					end
-
-				-- Odd numbers
 				else
 
 					print("Mine: Odd x = ".. x .."")
 					print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
 
-					MoveForward(Length-1, 'cord_l', '+', "mine")
+					MoveForward(Length-1, 'cord_l', '+', "mine", "check_inv")
 
 					if x ~= Width then
 
@@ -267,69 +371,15 @@ function MineRect(Length, Height, Width)
 						print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
 
 						-- Move Backwards
-						for i = 1, cord_l do
+						ChangeDirection('R')
+						ChangeDirection('R')
 
-							turtle.back()
+						MoveForward(cord_l, 'cord_l', '-', "mine", "check_inv")
+							
+						ChangeDirection('R')
 
-							cord_l = cord_l - 1
-					
-						end
+						MoveForward(cord_w, 'cord_w', '-', "mine", "check_inv")
 
-						turtle.turnRight()
-
-						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
-
-					end
-
-					-- Inventory full?
-					local slotCount = 0
-
-					for inventory = 1, 9 do
-
-						if turtle.getItemCount(inventory) > 0 then
-
-							slotCount = slotCount + 1
-
-						end
-
-					end
-
-					if slotCount > 8 then
-
-						print("Inventory Full")
-
-						local stored_l, stored_h, stored_w = cord_l, cord_h, cord_w
-
-						MoveDown(stored_h)
-						MoveForward(cord_l, 'cord_l', '-', "don't_mine")
-						turtle.turnLeft()
-
-						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
-
-						turtle.turnRight()
-
-						print("Emptying inventory")
-						print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
-						EmptyInventory()
-
-						turtle.turnRight()
-
-						-- Return to previous position
-						print("Returning...")
-
-						MoveUp(stored_h)
-
-						MoveForward(stored_w, 'cord_w', '+', "don't_mine")
-
-						turtle.turnRight()
-
-						MoveForward(stored_l, 'cord_l', '+', "don't_mine")
-
-						turtle.turnLeft()
-						turtle.turnLeft()
-
-						print("Continuing layer...")
-			
 					end
 
 				end
@@ -342,29 +392,27 @@ function MineRect(Length, Height, Width)
 		print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
 
 		MoveDown(y-1)
-		turtle.turnRight()
+		ChangeDirection('R')
 
-		EmptyInventory()
+		--Empty inventory
+		for inventory = 1, 9 do
 
-		turtle.turnLeft()
-        turtle.turnLeft()
-
-		print("Reset complete")
-
-		if Height > 1 and y < Height then
-
-			MoveUp(y)
+			turtle.select(inventory)
+			turtle.drop()
 
 		end
 
+		ChangeDirection('L')
+        ChangeDirection('L')
+
+		print("Reset complete")
+
 	end
 
-	print("All blocks mined. Loop ends")
-
-	MoveDown(Height - 1)
+	print("All blocks mined. Loop ends.")
 
 end
 
 
 -- Execute the functions together
-MineRect(tonumber(tArgs[1]), tonumber(tArgs[2]), tonumber(tArgs[3]))
+MineRect(tonumber(tArgs[1]), tonumber(tArgs[2]), tonumber(tArgs[3]), tonumber(tArgs[4]))
