@@ -1,0 +1,370 @@
+-- gets the user's args input in the form of an array of strings where [1] is the first argument
+local tArgs = { ... }
+
+-- '#' gets the length of the given list
+if #tArgs < 1 or #tArgs < 3 or #tArgs > 3 then
+
+	print( "Input Error. Usage: mineRect <length (x)> <height (y)> <width (z)>" )
+
+	-- ends the program
+	return
+
+end
+
+
+
+local cord_l, cord_h, cord_w = 0, 0, 0
+
+-- 12o'clock, 3o'clock, 6o'clock, 9o'clock
+-- local direction = "12o'clock"
+
+
+
+function MoveDown(Int)
+
+	for i = 1, Int do
+
+		turtle.digDown()
+
+		turtle.down()
+
+		cord_h = cord_h - 1
+
+	end
+
+end
+
+
+
+function MoveUp(Int)
+
+	for i = 1, Int do
+
+		turtle.digUp()
+
+		turtle.up()
+
+		cord_h = cord_h + 1
+
+	end
+
+end
+
+
+
+-- syntax: num; 'cord_l', 'h', or 'w'; '+' or '-'; 'mine' or 'don't_mine'
+function MoveForward(tilesForward, cordChanged, plusOrMinus, should_mine)
+
+	for i = 1, tilesForward do
+
+		local moveSuccess
+
+		if should_mine == "mine" then
+
+			turtle.dig()
+
+		elseif should_mine ~= "don't_mine" then
+
+			error("Syntax error. Use string 'mine' or 'don't_mine'")
+
+		end
+
+		while turtle.forward() == false do
+
+			print("Turtle blocked")
+			turtle.dig()
+
+		end
+
+		if plusOrMinus == '+' then
+
+			if cordChanged == "cord_l" then
+
+				cord_l = cord_l + 1
+
+			elseif cordChanged == "cord_h" then
+
+				cord_h = cord_h + 1
+
+			elseif cordChanged == "cord_w" then
+
+				cord_w = cord_w + 1
+
+			else
+
+				error("cord '".. cordChanged .."' not accepted. Use string 'cord_l', 'cord_h', or 'cord_w'")
+
+			end
+
+		elseif plusOrMinus == '-' then
+
+			if cordChanged == "cord_l" then
+
+				cord_l = cord_l - 1
+
+			elseif cordChanged == "cord_h" then
+
+				cord_h = cord_h - 1
+
+			elseif cordChanged == "cord_w" then
+
+				cord_w = cord_w - 1
+
+			else
+
+				error("cord '".. cordChanged .."' not accepted. Use string 'cord_l', 'cord_h', or 'cord_w'")
+
+			end
+
+		elseif plusOrMinus ~= '-' or plusOrMinus ~= '+' then
+
+			error("Symbol not accepted. Use char '+' or '-'")
+
+		end
+
+	end
+
+end
+
+
+
+function RotateRight()
+
+	turtle.turnRight()
+	turtle.dig()
+	turtle.forward()
+	turtle.turnRight()
+	turtle.dig()
+
+	cord_w = cord_w + 1
+
+end
+
+
+
+function RotateLeft()
+
+	turtle.turnLeft()
+	turtle.dig()
+	turtle.forward()
+	turtle.turnLeft()
+	turtle.dig()
+
+	cord_w = cord_w + 1
+
+end
+
+
+
+function EmptyInventory()
+
+	for inventory = 1, 9 do
+
+		turtle.select(inventory)
+		turtle.drop()
+
+	end
+
+end
+
+
+
+function MineRect(Length, Height, Width)
+
+	for y = 1, Height do
+
+		if Height > 1 and Width == 1 and Length == 1 then
+
+			turtle.digUp()
+			turtle.turnRight()
+
+		else
+
+			for x = 1, Width do
+
+				-- Even numbers
+				if x % 2 == 0 then
+
+					print("Mine: Even x = ".. x .."")
+					print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+
+					MoveForward(Length-1, 'cord_l', '-', "mine")
+
+					if x ~= Width then
+
+						RotateRight()
+
+					else
+
+						print("Finished mining layer.")
+
+						turtle.turnLeft()
+
+						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
+
+					end
+
+					-- Inventory full?
+					local slotCount = 0
+
+					for inventory = 1, 9 do
+
+						if turtle.getItemCount(inventory) > 0 then
+
+							slotCount = slotCount + 1
+
+						end
+
+					end
+
+					if slotCount > 8 then
+
+						print("Inventory Full")
+
+						local stored_h, stored_w = cord_h, cord_w
+
+						turtle.turnRight()
+						MoveDown(stored_h)
+
+						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
+
+						turtle.turnRight()
+
+						print("Emptying inventory")
+						print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+						EmptyInventory()
+
+						turtle.turnRight()
+
+						-- Return to previous position
+						print("Returning...")
+
+						MoveUp(stored_h)
+
+						MoveForward(stored_w, 'cord_w', '+', "don't_mine")
+
+						turtle.turnRight()
+
+						print("Continuing layer...")
+			
+					end
+
+				-- Odd numbers
+				else
+
+					print("Mine: Odd x = ".. x .."")
+					print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+
+					MoveForward(Length-1, 'cord_l', '+', "mine")
+
+					if x ~= Width then
+
+						RotateLeft()
+
+					else
+
+						print("Finished mining layer.")
+						print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+
+						-- Move Backwards
+						for i = 1, cord_l do
+
+							turtle.back()
+
+							cord_l = cord_l - 1
+					
+						end
+
+						turtle.turnRight()
+
+						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
+
+					end
+
+					-- Inventory full?
+					local slotCount = 0
+
+					for inventory = 1, 9 do
+
+						if turtle.getItemCount(inventory) > 0 then
+
+							slotCount = slotCount + 1
+
+						end
+
+					end
+
+					if slotCount > 8 then
+
+						print("Inventory Full")
+
+						local stored_l, stored_h, stored_w = cord_l, cord_h, cord_w
+
+						MoveDown(stored_h)
+						MoveForward(cord_l, 'cord_l', '-', "don't_mine")
+						turtle.turnLeft()
+
+						MoveForward(cord_w, 'cord_w', '-', "don't_mine")
+
+						turtle.turnRight()
+
+						print("Emptying inventory")
+						print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+						EmptyInventory()
+
+						turtle.turnRight()
+
+						-- Return to previous position
+						print("Returning...")
+
+						MoveUp(stored_h)
+
+						MoveForward(stored_w, 'cord_w', '+', "don't_mine")
+
+						turtle.turnRight()
+
+						MoveForward(stored_l, 'cord_l', '+', "don't_mine")
+
+						turtle.turnLeft()
+						turtle.turnLeft()
+
+						print("Continuing layer...")
+			
+					end
+
+				end
+
+			end
+
+		end
+
+		print("Empyting Inventory after layer...")
+		print("cord_l: ".. cord_l ..", cord_h: ".. cord_h ..", cord_w: ".. cord_w .."")
+
+		MoveDown(y-1)
+		turtle.turnRight()
+
+		EmptyInventory()
+
+		turtle.turnLeft()
+        turtle.turnLeft()
+
+		print("Reset complete")
+
+		if Height > 1 and y < Height then
+
+			MoveUp(y)
+
+		end
+
+	end
+
+	print("All blocks mined. Loop ends")
+
+	MoveDown(Height - 1)
+
+end
+
+
+-- Execute the functions together
+MineRect(tonumber(tArgs[1]), tonumber(tArgs[2]), tonumber(tArgs[3]))
